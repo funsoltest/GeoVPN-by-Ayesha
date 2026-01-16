@@ -1,0 +1,51 @@
+from appium import webdriver
+from appium.options.android import UiAutomator2Options
+from appium.webdriver.common.appiumby import AppiumBy
+import time
+
+# ----------------------------
+# Appium server configuration
+# ----------------------------
+options = UiAutomator2Options()
+options.platform_name = "Android"
+options.automation_name = "UiAutomator2"
+
+# APK path (already-installed app)
+options.app_package = "com.fast.secure.proxyvpn.unlimitedproxy.security"
+options.app_activity = "com.example.safevpn.ui.activity.MainActivity"
+options.no_reset = True
+
+# ----------------------------
+# Connect to Appium server
+# ----------------------------
+print("Connecting to Appium server...")
+driver = webdriver.Remote("http://127.0.0.1:4723", options=options)
+print("App launched successfully!")
+
+# ----------------------------
+# Wait for app to load splash screen
+# ----------------------------
+time.sleep(5)  # Give some time for splash screen to appear
+
+# ----------------------------
+# Find "Accept and Continue" button and click it
+# ----------------------------
+try:
+    # This will look for a button by its text
+    accept_button = driver.find_element(AppiumBy.ANDROID_UIAUTOMATOR,
+                                        'new UiSelector().text("Accept & Continue")')
+    accept_button.click()
+    print("Clicked 'Accept and Continue'")
+except:
+    print("Could not find 'Accept and Continue' button. Check button text or use Appium Inspector.")
+
+# ----------------------------
+# Keep app open for 10 seconds to see the next screen
+# ----------------------------
+time.sleep(30)
+
+# ----------------------------
+# Close app (optional)
+# ----------------------------
+print("Test completed!")
+driver.quit()

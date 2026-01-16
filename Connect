@@ -1,0 +1,122 @@
+from appium import webdriver
+from appium.options.android import UiAutomator2Options
+from appium.webdriver.common.appiumby import AppiumBy
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+from appium.webdriver.common.appiumby import AppiumBy
+from selenium.common.exceptions import TimeoutException
+import time
+
+options = UiAutomator2Options()
+options.platform_name = "Android"
+options.automation_name = "UiAutomator2"
+
+options.app_package = "com.fast.secure.proxyvpn.unlimitedproxy.security"
+options.app_activity = "com.example.safevpn.ui.activity.MainActivity"
+options.no_reset = True
+
+
+print("Connecting to Appium server...")
+driver = webdriver.Remote("http://127.0.0.1:4723", options=options)
+print("Session created")
+
+driver.activate_app("com.fast.secure.proxyvpn.unlimitedproxy.security")
+print("App forced to foreground")
+
+print("App launched successfully!")
+wait = WebDriverWait(driver, 10)
+
+try:
+    accept_button = driver.find_element(AppiumBy.ANDROID_UIAUTOMATOR,
+                                        'new UiSelector().text("Accept & Continue")')
+    accept_button.click()
+    print("Clicked 'Accept and Continue'")
+except:
+    print("Accept & Continue button not found, it is 2nd or onward session")
+
+wait = WebDriverWait(driver, 20)
+
+print("Checking current VPN state...")
+
+already_connected = False
+try:
+    WebDriverWait(driver, 5).until(
+        EC.presence_of_element_located(
+            (AppiumBy.ANDROID_UIAUTOMATOR,
+             'new UiSelector().textContains("Tap to Disconnect")')
+        )
+    )
+    already_connected = True
+    print("VPN is already connected")
+except TimeoutException:
+    print("VPN is disconnected, proceeding to connect")
+
+VPN_TOGGLE_ELEMENTS = [ (AppiumBy.ID, "com.fast.secure.proxyvpn.unlimitedproxy.security:id/inner_circle_view"),
+                        (AppiumBy.ID, "com.fast.secure.proxyvpn.unlimitedproxy.security:id/connectionStatus"), 
+                        (AppiumBy.ID, "com.fast.secure.proxyvpn.unlimitedproxy.security:id/vpn_on_off_icon") 
+                    ]
+
+if not already_connected:
+    vpn_clicked = False
+
+
+    for by, locator in VPN_TOGGLE_ELEMENTS:
+        try:
+            element = wait.until(
+                EC.presence_of_element_located((by, locator))
+            )
+            element.click()
+            print(f"Clicked VPN toggle: {locator}")
+            vpn_clicked = True
+            break
+        except TimeoutException:
+            print(f"Not found: {locator}")
+
+    if not vpn_clicked:
+        raise Exception("❌ No VPN toggle element found on Home screen")
+
+    # Handle permission (first time only)
+    try:
+        allow_button = WebDriverWait(driver, 5).until(
+            EC.presence_of_element_located(
+                (AppiumBy.ID, "android:id/button1")
+            )
+        )
+        allow_button.click()
+        print("Permission allowed")
+    except TimeoutException:
+        print("Permission dialog not shown (already granted)")
+
+    # Optional dialog close
+    try:
+        cross_button = WebDriverWait(driver, 10).until(
+            EC.presence_of_element_located(
+                (AppiumBy.ID,
+                 "com.fast.secure.proxyvpn.unlimitedproxy.security:id/close_btn")
+            )
+        )
+        cross_button.click()
+        print("dialog closed")
+    except:
+        print("No dialog to close")
+
+    print("Waiting for VPN to connect...")
+
+    WebDriverWait(driver, 20).until(
+        EC.presence_of_element_located(
+            (AppiumBy.ANDROID_UIAUTOMATOR,
+             'new UiSelector().textContains("Tap to Disconnect")')
+         )
+    )
+
+    print("✅ VPN Connected successfully")
+else:
+    print("✅ VPN was already connected, skipping connect step")
+
+print("Test completed!")
+
+driver.terminate_app("com.fast.secure.proxyvpn.unlimitedproxy.security")
+print("App terminated")
+
+driver.quit()
+
